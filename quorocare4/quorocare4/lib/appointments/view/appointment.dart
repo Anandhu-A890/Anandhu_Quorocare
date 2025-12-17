@@ -8,7 +8,7 @@ class AppointmentView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      initialIndex: 1, // Set to Completed (index 1) to match the screenshot
+      initialIndex: 0, // Set to upcoming (index 0) to match the screenshot
       length: 3, // For Upcoming, Completed, Cancelled
       child: Scaffold(
         appBar: AppBar(
