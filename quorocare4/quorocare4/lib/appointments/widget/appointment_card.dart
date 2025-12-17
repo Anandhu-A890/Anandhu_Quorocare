@@ -92,10 +92,21 @@ class AppointmentCard extends StatelessWidget {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          Icon(Icons.directions_run, size: 20),
-          SizedBox(width: 4),
-          Text('Track', style: AppFonts.bodyText),
+        children: [
+          Image.asset(
+            'assets/images/quorocar.png',
+            height: 18,
+            fit: BoxFit.contain,
+          ),
+          const SizedBox(width: 6),
+          const Text(
+            'Track',
+            style: TextStyle(
+              color: Colors.white, // Only the text is now forced to white
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -141,27 +152,52 @@ class AppointmentCard extends StatelessWidget {
 
   // Icon logic based on the appointment title
   Widget _buildAppointmentIcon() {
-    IconData iconData;
-    Color iconColor;
+    String assetPath;
+    Color bgColor;
     if (appointment.title.contains('Doctor Consultation')) {
-      iconData = Icons.medical_services;
-      iconColor = AppColors.primaryBlue;
+      assetPath = 'assets/images/quorocar.png';
+      bgColor = const Color(0xFF231391);
     } else if (appointment.title.contains('Sample Collection')) {
-      iconData = Icons.science;
-      iconColor = Colors.purple.shade700;
+      assetPath = 'assets/images/flask.png';
+      bgColor = const Color(0xFF9155FD);
     } else if (appointment.title.contains('Nurse Visit')) {
-      iconData = Icons.local_hospital;
-      iconColor = Colors.teal.shade700;
+      assetPath = 'assets/images/nurse.png';
+      bgColor = const Color(0xFF231391);
     } else {
-      iconData = Icons.person;
-      iconColor = Colors.grey.shade700;
+      assetPath = 'assets/images/quorocar.png';
+      bgColor = Colors.grey.shade700;
     }
 
+    //   return Container(
+    //     width: 40,
+    //     height: 40,
+    //     decoration: BoxDecoration(
+    //       color: Colors.grey.shade300,
+    //       shape: BoxShape.circle,
+    //     ),
+    //     child: Icon(Icons.medical_services, color: AppColors.lightText),
+    //   );
+    // }
+
     return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(color: iconColor, shape: BoxShape.circle),
-      child: Icon(iconData, color: AppColors.lightText),
+      width: 48,
+      height: 48,
+      padding: const EdgeInsets.all(8), // Space for the image inside the box
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(
+          10,
+        ), // Rounded corners like the screenshot
+      ),
+      child: Image.asset(
+        assetPath,
+        fit: BoxFit.contain,
+        // Optional: if your images are solid icons, you can tint them white:
+        // color: Colors.white,
+        errorBuilder: (context, error, stackTrace) {
+          return const Icon(Icons.medical_services, color: Colors.white);
+        },
+      ),
     );
   }
 
