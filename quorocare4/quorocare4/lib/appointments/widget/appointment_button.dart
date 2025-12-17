@@ -1,8 +1,4 @@
-// appointments_button.dart
-
 import 'package:flutter/material.dart';
-
-// appointment_button.dart
 
 class AppointmentButton extends StatelessWidget {
   final VoidCallback onPressed;
@@ -16,8 +12,8 @@ class AppointmentButton extends StatelessWidget {
       padding: const EdgeInsets.all(16.0),
       child: ElevatedButton.icon(
         onPressed: onPressed,
-        icon: const Icon(Icons.person),
-        label: const Text('Appointments', style: TextStyle(fontSize: 18)),
+        icon: const Icon(Icons.calendar_today, size: 24),
+        label: const Text('View Appointments', style: TextStyle(fontSize: 18)),
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
           shape: RoundedRectangleBorder(
