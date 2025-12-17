@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-//import 'package:quorocare4/appointments/view/appointment.dart';
-
-// Import all necessary files
-import 'package:quorocare4/appointments/view/homeview.dart';
-// Note: In a real project, you would need to adjust the import paths
-// (e.g., 'package:quorocare4/appointments/widget/appointment_button.dart').
+import 'package:quorocare4/appointments/style/styles.dart'; // Import AppColors
+import 'package:quorocare4/appointments/view/views.dart'; // Assuming this exports HomeView
 
 void main() {
   runApp(const MyApp());
@@ -13,11 +9,29 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+  // Use the constants defined in AppColors for clarity
+  static const Color customPrimary = AppColors.primaryBlue;
+  static const Color customAccent = AppColors.activeGreen;
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Appointment App',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+       
+        primaryColor: customPrimary,
+
+        
+        colorScheme:
+            ColorScheme.fromSwatch(
+              primarySwatch: Colors.indigo, 
+            ).copyWith(
+              
+              primary: customPrimary,
+              secondary: customAccent,
+            ),
+      ),
       home: const HomeView(),
     );
   }
