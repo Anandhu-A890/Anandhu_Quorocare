@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:quorocare4/appointments/style/styles.dart';
 import 'package:quorocare4/appointments/widget/widgets.dart';
 import 'package:quorocare4/appointments/view/appointment_details_view.dart';
-// Hide styling symbols from the track map import to avoid ambiguous imports
 import 'package:quorocare4/appointments/view/track_map_view.dart'
     hide AppColors, AppFonts;
 

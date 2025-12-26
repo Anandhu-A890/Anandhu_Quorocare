@@ -1,11 +1,14 @@
-import 'package:quorocare4/appointments/style/styles.dart';
 import 'package:flutter/material.dart';
 import 'dart:math';
+import '../style/styles.dart';
+
+
 
 class RoutePainter extends CustomPainter {
   final List<({double latitude, double longitude})> route;
   final int currentRouteIndex;
   final ({double latitude, double longitude}) patientLocation;
+  final Random _random = Random(); // Random generator for zig-zag effect
 
   RoutePainter({
     required this.route,
@@ -23,10 +26,7 @@ class RoutePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
-    final basePaint = Paint()..color = AppColors.primaryBlue;
-
     // 2. Coordinate Mapping
-    // Normalize coordinates based on the bounds of the entire route and patient location.
     final allLats = route.map((p) => p.latitude).toList()..add(patientLocation.latitude);
     final allLons = route.map((p) => p.longitude).toList()..add(patientLocation.longitude);
 
@@ -41,52 +41,63 @@ class RoutePainter extends CustomPainter {
     final mapHeight = size.height * (1.0 - 2 * verticalPadding);
     final centerOffset = Offset(size.width * horizontalPadding, size.height * verticalPadding);
 
-    // Function to map LatLng to screen Offset
     Offset mapPointToOffset(double lat, double lon) {
       final normalizedLon = (lon - minLon) / (maxLon - minLon);
       final normalizedLat = (lat - minLat) / (maxLat - minLat);
 
-      // X: Maps Longitude to width (left to right)
       final x = centerOffset.dx + normalizedLon * mapWidth;
-      
-      // Y: Maps Latitude (0=minLat, 1=maxLat) to screen height (bottom to top)
+      // Y is inverted for screen coordinates (0 is top)
       final y = size.height - centerOffset.dy - normalizedLat * mapHeight;
-      
+
       return Offset(x, y);
     }
-    
+
     // 3. Draw the Path (Doctor's current position to Patient)
     if (route.isNotEmpty && currentRouteIndex < route.length) {
       final path = Path();
       
-      // Start the path at the doctor's current location
-      final doctorOffset = mapPointToOffset(
+      final currentPoint = mapPointToOffset(
         route[currentRouteIndex].latitude, 
         route[currentRouteIndex].longitude
       );
-      path.moveTo(doctorOffset.dx, doctorOffset.dy);
+      path.moveTo(currentPoint.dx, currentPoint.dy);
       
-      // Draw lines (poly-line) to the remaining route points
-      for (int i = currentRouteIndex + 1; i < route.length; i++) {
-        final nextOffset = mapPointToOffset(route[i].latitude, route[i].longitude);
+      Offset lastOffset = currentPoint;
+
+      // Draw random, curved segments between route points
+      for (int i = currentRouteIndex; i < route.length - 1; i++) {
+        final startOffset = mapPointToOffset(route[i].latitude, route[i].longitude);
+        final endOffset = mapPointToOffset(route[i + 1].latitude, route[i + 1].longitude);
+
+        // Generate a random curve/zig-zag effect
+        final dx = endOffset.dx - startOffset.dx;
+        final dy = endOffset.dy - startOffset.dy;
+
+        // Calculate control point that forces a curve
+        final controlX1 = startOffset.dx + (dx * 0.3) + (_random.nextDouble() * 30 - 15);
+        final controlY1 = startOffset.dy + (dy * 0.7) + (_random.nextDouble() * 30 - 15);
+
+        final controlX2 = startOffset.dx + (dx * 0.7) + (_random.nextDouble() * 30 - 15);
+        final controlY2 = startOffset.dy + (dy * 0.3) + (_random.nextDouble() * 30 - 15);
         
-        // Use a slight curve/bezier effect for a smoother look like the image
-        if (i < route.length - 1) {
-            final nextNextOffset = mapPointToOffset(route[i+1].latitude, route[i+1].longitude);
-            final controlPoint = Offset(
-                (nextOffset.dx + nextNextOffset.dx) / 2,
-                nextOffset.dy
-            );
-            path.lineTo(nextOffset.dx, nextOffset.dy);
-        } else {
-            path.lineTo(nextOffset.dx, nextOffset.dy);
-        }
+        // Use a Cubic Bezier curve for a smooth, complex path
+        path.cubicTo(
+          controlX1, controlY1, 
+          controlX2, controlY2, 
+          endOffset.dx, endOffset.dy
+        );
+        lastOffset = endOffset;
       }
       
-      // The path ends at the patient's location
-      final patientOffset = mapPointToOffset(patientLocation.latitude, patientLocation.longitude);
-      path.lineTo(patientOffset.dx, patientOffset.dy);
+      // If the doctor is on the last segment, draw to the patient location
+      if (currentRouteIndex == route.length - 1) {
+          lastOffset = mapPointToOffset(route.last.latitude, route.last.longitude);
+      }
       
+      // Draw the final segment to the Patient Location
+      final patientOffset = mapPointToOffset(patientLocation.latitude, patientLocation.longitude);
+      path.lineTo(patientOffset.dx, patientOffset.dy); // Straight line to the final destination
+
       canvas.drawPath(path, linePaint);
     }
 
@@ -97,29 +108,23 @@ class RoutePainter extends CustomPainter {
       route[currentRouteIndex].longitude
     );
 
-    // Home Marker (Patient) - Placed near the bottom-left of the visualized path
+    // Home Marker (Patient)
     _drawMarker(canvas, patientOffset, Icons.home, AppColors.primaryBlue, 'Home');
 
-    // Doctor Marker (Car/Hospital) - Placed at the current route index
+    // Doctor Marker (Car/Hospital)
     _drawIconMarker(canvas, doctorOffset, Icons.local_hospital_rounded, AppColors.lightText, AppColors.primaryBlue);
   }
 
+  // --- Marker Drawing Methods (same as before) ---
   void _drawIconMarker(Canvas canvas, Offset center, IconData icon, Color iconColor, Color borderColor) {
-    // White background circle
     canvas.drawCircle(center, 18.0, Paint()..color = Colors.white);
-    
-    // Blue border
     canvas.drawCircle(center, 20.0, Paint()..color = borderColor..style = PaintingStyle.stroke..strokeWidth = 3.0);
     
-    // Draw the icon
     final TextPainter iconPainter = TextPainter(textDirection: TextDirection.rtl);
     iconPainter.text = TextSpan(
       text: String.fromCharCode(icon.codePoint),
       style: TextStyle(
-        fontSize: 26.0, 
-        fontFamily: icon.fontFamily,
-        color: borderColor,
-        package: icon.fontPackage,
+        fontSize: 26.0, fontFamily: icon.fontFamily, color: borderColor, package: icon.fontPackage,
       ),
     );
     iconPainter.layout();
@@ -127,23 +132,17 @@ class RoutePainter extends CustomPainter {
   }
   
   void _drawMarker(Canvas canvas, Offset center, IconData icon, Color color, String label) {
-    // The patient icon in the image is a custom pin/home icon that is slightly large
     final TextPainter homePainter = TextPainter(textDirection: TextDirection.rtl);
     homePainter.text = TextSpan(
       text: String.fromCharCode(Icons.home_filled.codePoint),
       style: TextStyle(
-        fontSize: 45.0, 
-        fontFamily: Icons.home_filled.fontFamily,
-        color: color.withOpacity(0.8), 
-        package: Icons.home_filled.fontPackage,
+        fontSize: 45.0, fontFamily: Icons.home_filled.fontFamily, color: color.withOpacity(0.8), package: Icons.home_filled.fontPackage,
       ),
     );
     homePainter.layout();
     
-    // Custom positioning to make it look like a map pin pointing down
     homePainter.paint(canvas, Offset(center.dx - homePainter.width / 2, center.dy - homePainter.height)); 
 
-    // Text "Home" label (subtle)
     final TextPainter labelPainter = TextPainter(textDirection: TextDirection.rtl);
     labelPainter.text = TextSpan(
       text: label,
@@ -158,4 +157,3 @@ class RoutePainter extends CustomPainter {
     return oldDelegate.currentRouteIndex != currentRouteIndex;
   }
 }
-// --- End of CustomPainter Class ---

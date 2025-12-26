@@ -1,46 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart' show MapController; // Still needed for disposal
+import 'package:flutter_map/flutter_map.dart' show MapController; 
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 import 'dart:math';
-import 'package:quorocare4/appointments/widget/widgets.dart';
+import 'package:quorocare4/appointments/widget/widgets.dart'; 
+import '../style/styles.dart';
 
-// =========================================================================
-// STYLES (Kept local for immediate runnability)
-// =========================================================================
-
-class AppColors {
-  static const primaryBlue = Color(0xFF0D47A1); // Darker blue
-  static const accentPurple = Color(0xFF673AB7);
-  static const activeGreen = Color(0xFF388E3C); // Green for "Arrived"
-  static const lightText = Colors.white;
-  static const darkText = Colors.black;
-  static const grey = Color(0xFFBDBDBD);
-  static const backgroundGrey = Color(0xFFF5F5F5); 
-}
-
-class AppFonts {
-  static const TextStyle heading1 = TextStyle(
-    fontSize: 24.0,
-    color: AppColors.darkText,
-  );
-  static const TextStyle subtleText = TextStyle(
-    fontSize: 12.0,
-    color: AppColors.grey,
-  );
-  static const TextStyle bodyText = TextStyle(
-    fontSize: 16.0,
-    color: AppColors.darkText,
-  );
-  static const TextStyle cardTitle = TextStyle(
-    fontSize: 16.0,
-    color: AppColors.darkText,
-  );
-}
-
-// =========================================================================
-// DATA (UNCHANGED)
-// =========================================================================
 
 // Patient's fixed location (Trivandrum area)
 const PatientLocation = (latitude: 8.5, longitude: 76.95);
@@ -54,13 +19,8 @@ const List<({double latitude, double longitude})> DoctorRoute = [
   (latitude: 8.50, longitude: 76.95), // End point
 ];
 
-// --- CONSTANTS ---
+
 const double AVG_SPEED_KMH = 30.0; // Average speed of care unit in km/h
-
-
-// =========================================================================
-// TRACKMAPVIEW IMPLEMENTATION
-// =========================================================================
 
 class TrackMapView extends StatefulWidget {
   const TrackMapView({super.key});
@@ -89,11 +49,13 @@ class _TrackMapViewState extends State<TrackMapView> {
   }
 
   void _updateDistanceAndEta() {
+    // FIX: DoctorRoute and PatientLocation are now correctly in scope.
     final currentPoint = DoctorRoute[_currentRouteIndex];
     final distance = _calculateDistance(
       currentPoint.latitude, currentPoint.longitude, PatientLocation.latitude, PatientLocation.longitude,
     );
 
+    // FIX: AVG_SPEED_KMH is now correctly in scope.
     // Calculate ETA: Time (hours) = Distance (km) / Speed (km/h)
     final timeInMinutes = (distance / AVG_SPEED_KMH) * 60;
 
@@ -144,33 +106,28 @@ class _TrackMapViewState extends State<TrackMapView> {
   }
 
   // --- CLEANED: Map Area Widget Builder ---
-  Widget _buildEmptyMapArea() {
-  return Container(
-    // Match the background color of the visualization in the image (light grey/off-white)
-    color: AppColors.backgroundGrey, 
-    child: CustomPaint(
-      painter: RoutePainter(
-        route: DoctorRoute,
-        currentRouteIndex: _currentRouteIndex,
-        patientLocation: PatientLocation,
+  Widget _buildEmptyMapArea(double height) {
+    return Container(
+      height: height, // Height is now controlled by the layout
+      color: AppColors.backgroundGrey, 
+      child: CustomPaint(
+        // FIX: DoctorRoute and PatientLocation are now correctly in scope.
+        painter: RoutePainter(
+          route: DoctorRoute,
+          currentRouteIndex: _currentRouteIndex,
+          patientLocation: PatientLocation,
+        ),
+        // Use an empty container as a child to ensure the CustomPaint takes up space
+        child: Container(), 
       ),
-      // Use an empty container as a child to ensure the CustomPaint takes up space
-      child: Container(), 
-    ),
-  );
-}
-
-  // --- UI BUILDERS (UNCHANGED) ---
-
-  Widget _buildStatusCard(BuildContext context) {
-    bool isArrived = _estimatedMinutes <= 0;
-
-    final initialDistance = _calculateDistance(
-      DoctorRoute.first.latitude, DoctorRoute.first.longitude, PatientLocation.latitude, PatientLocation.longitude,
     );
-    // Calculate the simulated progress value for the calling widget (if needed)
-    final simulatedProgress = initialDistance > 0 ? 1.0 - (_currentDistanceKm / initialDistance) : 1.0;
+  }
 
+  // --- UI BUILDERS (MODIFIED) ---
+
+  Widget _buildStatusCard(BuildContext context, double progress) {
+    bool isArrived = _estimatedMinutes <= 0;
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       decoration: BoxDecoration(
@@ -234,9 +191,7 @@ class _TrackMapViewState extends State<TrackMapView> {
                 width: 70,
                 height: 70,
                 decoration: BoxDecoration(
-                  color: isArrived
-                      ? AppColors.activeGreen
-                      : AppColors.primaryBlue,
+                  color: isArrived ? AppColors.activeGreen : AppColors.primaryBlue,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
@@ -254,6 +209,12 @@ class _TrackMapViewState extends State<TrackMapView> {
               ),
             ],
           ),
+          
+          const SizedBox(height: 16),
+          // Assuming TrackStatusIndicator is provided by 'widgets.dart'
+          TrackStatusIndicator(progress: progress), 
+          const SizedBox(height: 16),
+
           const Divider(height: 30, thickness: 1),
 
           // Instructions/Call Row
@@ -284,6 +245,7 @@ class _TrackMapViewState extends State<TrackMapView> {
     );
   }
 
+  // *** FIX: Add the missing _buildAdBanner method ***
   Widget _buildAdBanner() {
     return Column(
       children: [
@@ -337,12 +299,16 @@ class _TrackMapViewState extends State<TrackMapView> {
       ],
     );
   }
+  // ---------------------------------------------------
 
   // --- MAIN BUILD METHOD ---
 
   @override
   Widget build(BuildContext context) {
-    // Calculate final progress to return on pop (if needed by parent widget)
+    final screenHeight = MediaQuery.of(context).size.height;
+    final mapHeight = screenHeight * 0.55; 
+    
+    // FIX: DoctorRoute and PatientLocation are now correctly in scope.
     final initialDistance = _calculateDistance(
       DoctorRoute.first.latitude, DoctorRoute.first.longitude, PatientLocation.latitude, PatientLocation.longitude,
     );
@@ -367,9 +333,13 @@ class _TrackMapViewState extends State<TrackMapView> {
       ),
       body: Stack(
         children: [
-          // 1. Full-screen empty map area
-          Positioned.fill(
-            child: _buildEmptyMapArea(), // *** This is the cleaned-up space ***
+          // 1. Map Area - Only covers the top portion (mapHeight)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: mapHeight, // Fix the height of the map area
+            child: _buildEmptyMapArea(mapHeight), 
           ),
 
           // 2. Scrollable Content (Status Card + Ad Banner)
@@ -378,9 +348,10 @@ class _TrackMapViewState extends State<TrackMapView> {
               physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
                 children: [
-                  // Spacer to push the card down over the map
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.55),
-                  _buildStatusCard(context),
+                  // Spacer to push the card down exactly to the end of the map
+                  SizedBox(height: mapHeight), 
+                  _buildStatusCard(context, finalProgress),
+                  // FIX: _buildAdBanner is now available
                   _buildAdBanner(),
                   const SizedBox(height: 30),
                 ],
