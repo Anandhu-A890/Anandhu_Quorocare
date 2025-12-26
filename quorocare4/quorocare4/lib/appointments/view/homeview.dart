@@ -6,7 +6,7 @@ class HomeView extends StatelessWidget {
   const HomeView({Key? key}) : super(key: key);
 
   void _handleAppointmentsTap(BuildContext context) {
-    // Navigate to the AppointmentsView when the button is pressed
+    
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (context) => const AppointmentView()));

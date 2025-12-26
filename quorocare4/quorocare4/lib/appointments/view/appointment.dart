@@ -76,13 +76,13 @@ class AppointmentView extends StatelessWidget {
                           child: TabBar(
                             labelPadding: EdgeInsets.zero,
                             dividerColor: Colors.transparent,
-                            // Custom Indicator Style
+                            
                             indicatorSize: TabBarIndicatorSize.tab,
                             indicator: BoxDecoration(
                               borderRadius: BorderRadius.circular(20.0),
                               color: AppColors.activeTabColor,
                             ),
-                            // Tab Colors and Labels
+                            
                             labelColor: AppColors.lightText,
                             unselectedLabelColor: Colors.black54,
 

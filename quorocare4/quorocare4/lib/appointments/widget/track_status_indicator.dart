@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:quorocare4/appointments/style/styles.dart';
+import '../style/styles.dart';
 
 class TrackStatusIndicator extends StatelessWidget {
   final double progress; // progress should be between 0.0 and 1.0

@@ -4,7 +4,7 @@ class AppColors {
   
   static const Color primaryBlue = Color(0xFF231391);
   static const Color accentPurple = Color(0xFF887FC6);
-  static const Color activeGreen = Color(0xFF00D2AA,);
+  static const Color activeGreen = Color(0xFF00D2AA);
    
   static const Color darkText = Colors.black;
   static const Color lightText = Colors.white;

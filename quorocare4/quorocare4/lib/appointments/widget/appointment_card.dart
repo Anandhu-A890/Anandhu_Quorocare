@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:quorocare4/appointments/style/styles.dart';
 import 'package:quorocare4/appointments/widget/widgets.dart';
-import 'package:quorocare4/appointments/view/appointment_details_view.dart'; // Import for navigation
+import 'package:quorocare4/appointments/view/appointment_details_view.dart';
+// Hide styling symbols from the track map import to avoid ambiguous imports
+import 'package:quorocare4/appointments/view/track_map_view.dart'
+    hide AppColors, AppFonts;
 
 // ---------------------------------------------
-// DUMMY DATA STRUCTURE for the appointment cards
+// DUMMY DATA STRUCTURE
 // ---------------------------------------------
 
 class Appointment {
@@ -26,10 +29,10 @@ class Appointment {
 }
 
 // ---------------------------------------------
-// APPOINTMENT CARD WIDGET
+// APPOINTMENT CARD WIDGET (STATEFUL)
 // ---------------------------------------------
 
-class AppointmentCard extends StatelessWidget {
+class AppointmentCard extends StatefulWidget {
   final Appointment appointment;
   final bool isUpcoming;
 
@@ -39,21 +42,73 @@ class AppointmentCard extends StatelessWidget {
     required this.isUpcoming,
   }) : super(key: key);
 
+  @override
+  State<AppointmentCard> createState() => _AppointmentCardState();
+}
+
+class _AppointmentCardState extends State<AppointmentCard> {
+  // State to hold the dynamic progress of the doctor's vehicle
+  double _currentProgress = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize with a non-zero progress if the status is 'On the way'
+    if (widget.appointment.status == 'On the way') {
+      _currentProgress = 0.3;
+    }
+  }
+
+  // --- NAVIGATION FUNCTIONS ---
+
+  // Standard navigation to details page
   void _navigateToDetails(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => AppointmentDetailsView(appointment: appointment),
+        builder: (context) =>
+            AppointmentDetailsView(appointment: widget.appointment),
       ),
     );
   }
 
-  Widget _buildStatusLabel(String status) {
-    Color displayColor = AppColors.backgroundGrey; // Default/Fallback
+  // Navigation to the tracking page, expecting a result back
+  void _navigateToTracking(BuildContext context) async {
+    // Navigate to the TrackMapView
+    final result = await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const TrackMapView()));
 
-    if (status == 'On the way') {
-      displayColor = AppColors.statusLabelColorOnTheWay; // Dark Purple
+    // Check if the result is a valid progress value (double)
+    if (result != null && result is double) {
+      setState(() {
+        _currentProgress = result;
+      });
+      // Optionally, show a confirmation snackbar
+      if (_currentProgress >= 1.0) {
+        // Handle completion logic if progress reached 1.0
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Doctor has arrived!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
+  // --- BUILD HELPERS ---
+
+  Widget _buildStatusLabel(String status) {
+    Color displayColor = AppColors.backgroundGrey;
+
+    // Check if the current progress is 1.0, which might supersede the initial status
+    if (_currentProgress >= 1.0 && widget.isUpcoming && status != 'Cancelled') {
+      status = 'Arrived'; // Override status for visual feedback
+      displayColor = AppColors.statusLabelColorConfirmed;
+    } else if (status == 'On the way') {
+      displayColor = AppColors.statusLabelColorOnTheWay;
     } else if (status == 'Confirmed' || status == 'Completed') {
-      displayColor = AppColors.statusLabelColorConfirmed; // Bright Teal/Green
+      displayColor = AppColors.statusLabelColorConfirmed;
     } else if (status == 'Cancelled') {
       displayColor = Colors.red.shade600;
     }
@@ -68,33 +123,30 @@ class AppointmentCard extends StatelessWidget {
     );
   }
 
-  // Helper widget for the "View Details" link
   Widget _buildViewDetailsButton(BuildContext context) {
     return TextButton.icon(
       onPressed: () => _navigateToDetails(context),
-      icon: const Text('View Details', style: AppFonts.linkText),
-      label: const Icon(Icons.arrow_forward, color: AppColors.darkText),
+      icon: Text('View Details', style: AppFonts.linkText),
+      label: Icon(Icons.arrow_forward, color: AppColors.darkText),
     );
   }
 
-  // Helper widget for the "Track" button
+  // Updated to use the tracking navigation function
   Widget _buildTrackButton() {
     return ElevatedButton(
-      onPressed: () {
-        // Implement tracking logic
-      },
+      onPressed: () => _navigateToTracking(context),
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.trackButtonColor,
         foregroundColor: AppColors.lightText,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
-        minimumSize: const Size(90, 36), // Adjusted size for better look
+        minimumSize: const Size(90, 36),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          Icon(Icons.directions_run, size: 20),
-          SizedBox(width: 4),
+        children: [
+          const Icon(Icons.directions_run, size: 20),
+          const SizedBox(width: 4),
           Text('Track', style: AppFonts.bodyText),
         ],
       ),
@@ -103,32 +155,45 @@ class AppointmentCard extends StatelessWidget {
 
   // The core function to build the action/indicator row
   Widget _buildActionRow(BuildContext context) {
-    // Logic for Upcoming Tab
-    if (isUpcoming) {
-      if (appointment.title.contains('Doctor Consultation')) {
-        // Home Doctor: Progress Indicator (Left) + Track Button (Right)
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Expanded(
-              child: TrackStatusIndicator(progress: 0.7), // Progress bar
-            ),
-            const SizedBox(width: 8), // Spacer
-            _buildTrackButton(), // Track button
-          ],
-        );
-      } else if (appointment.status == 'Confirmed') {
-        // Home Sample Collection / Clinic Nurse Visit: View Details (Right)
+    // Check if the current item is the 'Home Doctor' and is upcoming
+    final bool isTrackable =
+        widget.isUpcoming &&
+        widget.appointment.title.contains('Doctor Consultation');
+
+    if (isTrackable) {
+      // If tracking is complete (progress 1.0 or more), show View Details
+      if (_currentProgress >= 1.0) {
         return Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [_buildViewDetailsButton(context)],
         );
       }
+
+      // Home Doctor: Show Progress Indicator (Left) + Track Button (Right)
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            // Pass the dynamic progress state to the indicator
+            child: TrackStatusIndicator(progress: _currentProgress),
+          ),
+          const SizedBox(width: 8), // Spacer
+          _buildTrackButton(), // Track button
+        ],
+      );
+    }
+
+    // Logic for other Upcoming appointments (Confirmed status)
+    if (widget.isUpcoming && widget.appointment.status == 'Confirmed') {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [_buildViewDetailsButton(context)],
+      );
     }
 
     // Logic for Completed/Cancelled Tabs (View Details on the right)
-    if (appointment.status == 'Completed' ||
-        appointment.status == 'Cancelled') {
+    if (widget.appointment.status == 'Completed' ||
+        widget.appointment.status == 'Cancelled') {
       return Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [_buildViewDetailsButton(context)],
@@ -143,13 +208,13 @@ class AppointmentCard extends StatelessWidget {
   Widget _buildAppointmentIcon() {
     IconData iconData;
     Color iconColor;
-    if (appointment.title.contains('Doctor Consultation')) {
+    if (widget.appointment.title.contains('Doctor Consultation')) {
       iconData = Icons.medical_services;
       iconColor = AppColors.primaryBlue;
-    } else if (appointment.title.contains('Sample Collection')) {
+    } else if (widget.appointment.title.contains('Sample Collection')) {
       iconData = Icons.science;
       iconColor = Colors.purple.shade700;
-    } else if (appointment.title.contains('Nurse Visit')) {
+    } else if (widget.appointment.title.contains('Nurse Visit')) {
       iconData = Icons.local_hospital;
       iconColor = Colors.teal.shade700;
     } else {
@@ -177,17 +242,17 @@ class AppointmentCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(15.0),
               // Conditional Border Color based on status
               side: BorderSide(
-                color: isUpcoming && appointment.status == 'On the way'
+                color:
+                    widget.isUpcoming &&
+                        widget.appointment.status == 'On the way'
                     ? AppColors.primaryBlue
                     : AppColors.cardBorderColor,
                 width: 1.0,
               ),
             ),
             child: InkWell(
-              onTap:
-                  !isUpcoming || appointment.title != 'Home Doctor Consultation'
-                  ? () => _navigateToDetails(context)
-                  : null, // Allow tapping if it's not a 'trackable' upcoming item
+              // Tap navigates to details page
+              onTap: () => _navigateToDetails(context),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -199,16 +264,19 @@ class AppointmentCard extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            appointment.title,
+                            widget.appointment.title,
                             style: AppFonts.cardTitle,
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text(appointment.name, style: AppFonts.bodyText),
-                    Text(appointment.date, style: AppFonts.bodyText),
-                    Text(appointment.address, style: AppFonts.subtleText),
+                    Text(widget.appointment.name, style: AppFonts.bodyText),
+                    Text(widget.appointment.date, style: AppFonts.bodyText),
+                    Text(
+                      widget.appointment.address,
+                      style: AppFonts.subtleText,
+                    ),
                     const SizedBox(height: 10),
 
                     // **THE ACTION ROW CALL**
@@ -222,7 +290,8 @@ class AppointmentCard extends StatelessWidget {
           Positioned(
             top: 10,
             right: 10,
-            child: _buildStatusLabel(appointment.status),
+            // Pass the original status, letting the builder handle the 'Arrived' override
+            child: _buildStatusLabel(widget.appointment.status),
           ),
         ],
       ),
@@ -231,7 +300,7 @@ class AppointmentCard extends StatelessWidget {
 }
 
 // ---------------------------------------------
-// APPOINTMENT LIST (The Content of Each Tab)
+// APPOINTMENT LIST (Restored to include all original data)
 // ---------------------------------------------
 
 class AppointmentList extends StatelessWidget {
@@ -248,21 +317,21 @@ class AppointmentList extends StatelessWidget {
           name: 'Sreekrishnan p',
           date: 'Fri, 9 Nov. 5:30PM.',
           address: 'SRA 30, Vadacode thozhukkal neyyattinkara po,695121',
-          status: 'On the way',
+          status: 'On the way', // Trackable item
         ),
         Appointment(
           title: 'Home Sample Collection',
           name: 'Sreekrishnan p',
           date: 'Fri, 9 Nov. 5:30PM.',
           address: 'SRA 30, Vadacode thozhukkal neyyattinkara po,695121',
-          status: 'Confirmed',
+          status: 'Confirmed', // View Details item
         ),
         Appointment(
           title: 'Clinic Nurse Visit',
           name: 'Sreekrishnan p',
           date: 'Fri, 9 Nov. 5:30PM.',
           address: 'SRA 30, Vadacode thozhukkal neyyattinkara po,695121',
-          status: 'Confirmed',
+          status: 'Confirmed', // View Details item
         ),
       ];
     } else if (pageType == 'Completed') {
@@ -272,7 +341,7 @@ class AppointmentList extends StatelessWidget {
           name: 'Sreekrishnan p',
           date: 'Fri, 9 Nov. 5:30PM.',
           address: 'SRA 30, Vadacode thozhukkal neyyattinkara po,695121',
-          status: 'Completed', // Changed from Done/Completed
+          status: 'Completed',
           isCompleted: true,
         ),
         Appointment(
