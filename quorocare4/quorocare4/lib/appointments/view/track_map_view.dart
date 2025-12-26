@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart' show MapController; 
+import 'package:flutter_map/flutter_map.dart' show MapController;
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 import 'dart:math';
-import 'package:quorocare4/appointments/widget/widgets.dart'; 
+import 'package:quorocare4/appointments/widget/widgets.dart';
 import '../style/styles.dart';
 
 
@@ -39,7 +39,7 @@ class _TrackMapViewState extends State<TrackMapView> {
   Timer? _routeTimer;
   
   // Kept MapController only for disposal, though not strictly needed if FlutterMap is gone
-  final MapController _mapController = MapController(); 
+  final MapController _mapController = MapController();
 
   // --- HELPER FUNCTIONS ---
 
@@ -49,13 +49,11 @@ class _TrackMapViewState extends State<TrackMapView> {
   }
 
   void _updateDistanceAndEta() {
-    // FIX: DoctorRoute and PatientLocation are now correctly in scope.
     final currentPoint = DoctorRoute[_currentRouteIndex];
     final distance = _calculateDistance(
       currentPoint.latitude, currentPoint.longitude, PatientLocation.latitude, PatientLocation.longitude,
     );
 
-    // FIX: AVG_SPEED_KMH is now correctly in scope.
     // Calculate ETA: Time (hours) = Distance (km) / Speed (km/h)
     final timeInMinutes = (distance / AVG_SPEED_KMH) * 60;
 
@@ -109,16 +107,15 @@ class _TrackMapViewState extends State<TrackMapView> {
   Widget _buildEmptyMapArea(double height) {
     return Container(
       height: height, // Height is now controlled by the layout
-      color: AppColors.backgroundGrey, 
+      color: AppColors.backgroundGrey,
       child: CustomPaint(
-        // FIX: DoctorRoute and PatientLocation are now correctly in scope.
         painter: RoutePainter(
           route: DoctorRoute,
           currentRouteIndex: _currentRouteIndex,
           patientLocation: PatientLocation,
         ),
         // Use an empty container as a child to ensure the CustomPaint takes up space
-        child: Container(), 
+        child: Container(),
       ),
     );
   }
@@ -212,7 +209,7 @@ class _TrackMapViewState extends State<TrackMapView> {
           
           const SizedBox(height: 16),
           // Assuming TrackStatusIndicator is provided by 'widgets.dart'
-          TrackStatusIndicator(progress: progress), 
+          TrackStatusIndicator(progress: progress),
           const SizedBox(height: 16),
 
           const Divider(height: 30, thickness: 1),
@@ -245,7 +242,7 @@ class _TrackMapViewState extends State<TrackMapView> {
     );
   }
 
-  // *** FIX: Add the missing _buildAdBanner method ***
+  
   Widget _buildAdBanner() {
     return Column(
       children: [
@@ -305,60 +302,64 @@ class _TrackMapViewState extends State<TrackMapView> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final mapHeight = screenHeight * 0.55; 
-    
-    // FIX: DoctorRoute and PatientLocation are now correctly in scope.
+    // Calculate initial distance and progress
     final initialDistance = _calculateDistance(
       DoctorRoute.first.latitude, DoctorRoute.first.longitude, PatientLocation.latitude, PatientLocation.longitude,
     );
     final finalProgress = initialDistance > 0 ? 1.0 - (_currentDistanceKm / initialDistance) : 1.0;
+    
+    final mapHeight = MediaQuery.of(context).size.height * 0.55;
 
+    // Use a standard scrollable structure to fix the 'shaking' issue
     return Scaffold(
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        // Match map background for smooth transition when scrolling
+        backgroundColor: AppColors.backgroundGrey,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.darkText),
           onPressed: () {
-            // Pop the page, passing the calculated final progress back
             Navigator.of(context).pop(finalProgress);
           },
         ),
-        title: Text(
-          'Reaching to... $_targetAddress',
-          style: AppFonts.subtleText.copyWith(color: AppColors.darkText),
-        ),
-      ),
-      body: Stack(
-        children: [
-          // 1. Map Area - Only covers the top portion (mapHeight)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: mapHeight, // Fix the height of the map area
-            child: _buildEmptyMapArea(mapHeight), 
-          ),
-
-          // 2. Scrollable Content (Status Card + Ad Banner)
-          Positioned.fill(
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                children: [
-                  // Spacer to push the card down exactly to the end of the map
-                  SizedBox(height: mapHeight), 
-                  _buildStatusCard(context, finalProgress),
-                  // FIX: _buildAdBanner is now available
-                  _buildAdBanner(),
-                  const SizedBox(height: 30),
-                ],
+        // Home Icon and Address
+        title: Row(
+          mainAxisSize: MainAxisSize.min, // Keep the Row size minimum
+          children: [
+            // Home Icon
+            const Icon(
+              Icons.home_outlined,
+              color: AppColors.darkText,
+              size: 18,
+            ),
+            const SizedBox(width: 6),
+            // Address Text
+            Flexible(
+              child: Text(
+                'Reaching to... $_targetAddress',
+                style: AppFonts.subtleText.copyWith(color: AppColors.darkText),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+      // Use SingleChildScrollView to wrap the entire screen content
+      body: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: Column(
+          children: [
+            // 1. Map Area - Fixed height
+            _buildEmptyMapArea(mapHeight),
+
+            // 2. Status Card - Immediately follows the map and starts the scrollable content
+            _buildStatusCard(context, finalProgress),
+
+            // 3. Ad Banner
+            _buildAdBanner(),
+            const SizedBox(height: 30),
+          ],
+        ),
       ),
     );
   }
